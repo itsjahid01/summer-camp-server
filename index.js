@@ -35,15 +35,12 @@ async function run() {
     app.get('/classes',async(req,res)=>{
         const result=await classesCollection.find().toArray()
         res.send(result)
-
     })
-
-        
-    // app.get('/instructors',async(req,res)=>{
-    //     const result=await instructorsCollection.find().toArray()
-    //     res.send(result)
-
-    // })
+      
+    app.get('/instructors',async(req,res)=>{
+        const result=await instructorsCollection.find().toArray()
+        res.send(result)
+    })
 
 
     // Send a ping to confirm a successful connection
@@ -55,8 +52,6 @@ async function run() {
   }
 }
 run().catch(console.dir);
-
-
 
 
 app.get('/', (req, res) => {

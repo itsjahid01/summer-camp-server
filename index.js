@@ -29,11 +29,34 @@ async function run() {
     await client.connect();
 
 
+    const usersCollection= client.db("summerCampDB").collection("users")
     const classesCollection= client.db("summerCampDB").collection("classes")
     const instructorsCollection= client.db("summerCampDB").collection("instructors")
     const selectedCollection= client.db("summerCampDB").collection("selectedClasses")
 
-    // classes api
+   
+    // users related api
+
+    app.get('/users',async(req,res)=>{
+        const result=await usersCollection.find().toArray()
+        res.send(result)
+    })
+
+    app.post('/users',async(req,res)=>{
+        const user=req.body
+        const email=user?.email
+        const query={email: email}
+        const existingUser=await usersCollection.findOne(query)
+        if (existingUser) {
+            return res.send({message:'user already exists'})
+        }
+        const result=await usersCollection.insertOne(user)
+        res.send(result)
+    })
+
+
+
+    // classes related api
     app.get('/classes',async(req,res)=>{
         const result=await classesCollection.find().toArray()
         res.send(result)
@@ -63,7 +86,7 @@ async function run() {
         res.send(result)
     })
 
-    // instructors api
+    // instructors related api
     app.get('/instructors',async(req,res)=>{
         const result=await instructorsCollection.find().toArray()
         res.send(result)

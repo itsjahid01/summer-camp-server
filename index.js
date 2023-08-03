@@ -35,7 +35,7 @@ async function run() {
     const selectedCollection= client.db("summerCampDB").collection("selectedClasses")
 
    
-    // users related api
+    //---------------- users related api-------------
 
     app.get('/users',async(req,res)=>{
         const result=await usersCollection.find().toArray()
@@ -54,14 +54,54 @@ async function run() {
         res.send(result)
     })
 
+    // make admin api 
+    app.patch('/users/admin/:id',async(req,res)=>{
+      const id=req.params.id
+      console.log(id)
+      const filter={_id: new ObjectId(id)}
+      const updateDoc={
+        $set:{
+          role: 'admin'
+        }
+      }
+
+      const result=await usersCollection.updateOne(filter,updateDoc);
+      res.send(result)
+    })
 
 
-    // classes related api
+    // make instructor api 
+    app.patch('/users/instructor/:id',async(req,res)=>{
+      const id=req.params.id
+      console.log(id)
+      const filter={_id: new ObjectId(id)}
+      const updateDoc={
+        $set:{
+          role: 'instructor'
+        }
+      }
+      
+      const result=await usersCollection.updateOne(filter,updateDoc);
+      res.send(result)
+    })
+
+
+    app.delete('/users/:id',async(req,res)=>{
+      const id=req.params.id
+      // console.log(id)
+      const query={ _id: new ObjectId(id) }
+      const result=await usersCollection.deleteOne(query)
+      res.send(result)
+  })
+
+    //---------- classes related api-------------
     app.get('/classes',async(req,res)=>{
         const result=await classesCollection.find().toArray()
         res.send(result)
     })
 
+
+    //---------------carts related api------------
     app.get('/selectedClasses',async(req,res)=>{
         const email=req.query.email;
         if (!email) {
@@ -86,7 +126,7 @@ async function run() {
         res.send(result)
     })
 
-    // instructors related api
+    //------------- instructors related api------------
     app.get('/instructors',async(req,res)=>{
         const result=await instructorsCollection.find().toArray()
         res.send(result)

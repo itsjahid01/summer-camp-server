@@ -1,5 +1,6 @@
 const express = require('express')
 const cors= require('cors')
+var jwt = require('jsonwebtoken');
 require('dotenv').config()
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
@@ -9,6 +10,24 @@ const port = process.env.PORT || 5000;
 // middleware
 app.use(cors())
 app.use(express.json())
+
+const verifyJWT=(req,res,next)=>{
+  const authorization=req.headers.authorization
+  if (!authorization) {
+    return res.status(401).send({error:true,message:'unauthorized access'})
+  }
+
+  const token =authorization.split(' ')[1];
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (error,decoded)=>{ 
+    if (error) {
+    return res.status(401).send({error:true,message:'unauthorized access'})
+    }
+
+    req.decoded=decoded;
+    next()
+  })
+}
 
 
 
@@ -34,6 +53,28 @@ async function run() {
     const instructorsCollection= client.db("summerCampDB").collection("instructors")
     const selectedCollection= client.db("summerCampDB").collection("selectedClasses")
 
+
+    // generate jwt token
+    app.post('/jwt',(req,res)=>{
+      const user=req.body
+      // console.log(user)
+      const token =jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1hr' });
+
+      res.send({token})
+    })
+
+
+    // verify admin middleware
+    const verifyAdmin=async(req,res,next)=>{
+      const email=req.decoded.email;
+      const query={email: email}
+      const user =await usersCollection.findOne(query)
+      if (user.role !== 'admin') {
+        return res.status(403).send({ error: true, message: 'forbidden message' });
+      }
+      next()
+    }
+
    
     //---------------- users related api-------------
 
@@ -41,6 +82,22 @@ async function run() {
         const result=await usersCollection.find().toArray()
         res.send(result)
     })
+
+    // security layer: verifyJWT
+    // email same
+     // check admin
+     app.get('/users/admin/:email', verifyJWT, async (req, res) => {
+      const email = req.params.email;
+
+      if (req.decoded.email !== email) {
+        res.send({error:true, message: 'unauthorized user'})
+      }
+
+      const query = { email: email }
+      const result= await usersCollection.findOne(query);
+      res.send(result);
+    })
+
 
     app.post('/users',async(req,res)=>{
         const user=req.body
@@ -57,7 +114,7 @@ async function run() {
     // make admin api 
     app.patch('/users/admin/:id',async(req,res)=>{
       const id=req.params.id
-      console.log(id)
+      // console.log(id)
       const filter={_id: new ObjectId(id)}
       const updateDoc={
         $set:{
@@ -73,7 +130,7 @@ async function run() {
     // make instructor api 
     app.patch('/users/instructor/:id',async(req,res)=>{
       const id=req.params.id
-      console.log(id)
+      // console.log(id)
       const filter={_id: new ObjectId(id)}
       const updateDoc={
         $set:{
@@ -100,17 +157,53 @@ async function run() {
         res.send(result)
     })
 
+    app.patch('/classes/approved/:id',async(req,res)=>{
+      const id=req.params.id
+      // console.log(id)
+      const filter={_id: new ObjectId(id)}
+      const updateDoc={
+        $set:{
+          status: 'approved'
+        }
+      }
+      
+      const result=await classesCollection.updateOne(filter,updateDoc);
+      res.send(result)
+    })
 
-    //---------------carts related api------------
-    app.get('/selectedClasses',async(req,res)=>{
-        const email=req.query.email;
+
+    app.patch('/classes/denied/:id',async(req,res)=>{
+      const id=req.params.id
+      // console.log(id)
+      const filter={_id: new ObjectId(id)}
+      const updateDoc={
+        $set:{
+          status: 'denied'
+        }
+      }
+      
+      const result=await classesCollection.updateOne(filter,updateDoc);
+      res.send(result)
+    })
+
+
+    //---------------Cart related api------------
+    app.get('/selectedClasses',verifyJWT, async(req,res)=>{
+        const email=req.query.email;      
         if (!email) {
             res.send([])
         }
+        
+        const decodedEmail=req.decoded.email;
+        if (decodedEmail !== email) {
+          return res.status(403).send({error:true,message:'forbidden user'})         
+        }
+
         const query={email: email}
-        const result=await selectedCollection.find(query).toArray()
+        const result=await selectedCollection.find(query).toArray();
         res.send(result)
     })
+
 
     app.post('/selectedClasses',async (req,res)=>{
         const item = req.body

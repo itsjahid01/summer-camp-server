@@ -78,15 +78,16 @@ async function run() {
    
     //---------------- users related api-------------
 
-    app.get('/users',async(req,res)=>{
+    app.get('/users', verifyJWT, verifyAdmin, async(req,res)=>{
         const result=await usersCollection.find().toArray()
         res.send(result)
     })
 
     // security layer: verifyJWT
     // email same
-     // check admin
-     app.get('/users/admin/:email', verifyJWT, async (req, res) => {
+    // check admin
+    //  check user role
+    app.get('/users/admin/:email', verifyJWT, async (req, res) => {
       const email = req.params.email;
 
       if (req.decoded.email !== email) {
@@ -98,15 +99,17 @@ async function run() {
       res.send(result);
     })
 
-
+    
     app.post('/users',async(req,res)=>{
         const user=req.body
         const email=user?.email
         const query={email: email}
+
         const existingUser=await usersCollection.findOne(query)
         if (existingUser) {
             return res.send({message:'user already exists'})
         }
+
         const result=await usersCollection.insertOne(user)
         res.send(result)
     })
@@ -187,13 +190,13 @@ async function run() {
     })
 
 
-    //---------------Cart related api------------
+    //---------------Carts related api------------
     app.get('/selectedClasses',verifyJWT, async(req,res)=>{
         const email=req.query.email;      
         if (!email) {
             res.send([])
         }
-        
+
         const decodedEmail=req.decoded.email;
         if (decodedEmail !== email) {
           return res.status(403).send({error:true,message:'forbidden user'})         

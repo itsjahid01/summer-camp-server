@@ -5,6 +5,7 @@ require('dotenv').config()
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const app = express()
+const stripe=require('stripe')(process.env.PAYMENT_SECRET_KEY)
 const port = process.env.PORT || 5000;
 
 // middleware
@@ -52,6 +53,7 @@ async function run() {
     const classesCollection= client.db("summerCampDB").collection("classes")
     const instructorsCollection= client.db("summerCampDB").collection("instructors")
     const selectedCollection= client.db("summerCampDB").collection("selectedClasses")
+    const paymentsCollection= client.db("summerCampDB").collection("paymentsCollection")
 
 
     // generate jwt token
@@ -160,6 +162,32 @@ async function run() {
         res.send(result)
     })
 
+
+  app.get('/classes/:email', verifyJWT, async(req,res)=>{
+    const email=req.params.email;
+    const query={email:email}
+
+    const result=await classesCollection.find(query).toArray()
+    res.send(result)
+  })
+
+
+  // app.get('/classes/:email', verifyJWT, async(req,res)=>{
+  //   const email=req.params.email;
+  //   const query={email:email}
+
+  //   const result=await classesCollection.find(query).toArray()
+  //   res.send(result)
+  // })
+
+
+  app.post('/classes',verifyJWT,async (req,res)=>{
+      const newClass = req.body
+      const result=await classesCollection.insertOne(newClass);
+      res.send(result)
+  })
+
+
     app.patch('/classes/approved/:id',async(req,res)=>{
       const id=req.params.id
       // console.log(id)
@@ -228,9 +256,40 @@ async function run() {
         res.send(result)
     })
 
+    //------------- payment related api------------
+    // create payment intent
+    app.post('/create-payment-intent',verifyJWT, async(req,res)=>{
+      const {price}=req.body;
+      const amount=price*100
+
+      const paymentIntent=await stripe.paymentIntents.create({
+        amount:amount,
+        currency:'usd',
+        payment_method_types:['card']
+      })
+
+      res.send({
+        clientSecret:paymentIntent.client_secret
+      })
+
+    })
 
 
+    app.post('/payments', verifyJWT, async(req,res)=>{
+      const payment=req.body;
+      const insertResult=await paymentsCollection.insertOne(payment)
+
+      const query={_id:{$in:payment.classesId.map(id=>new ObjectId(id))}}
+      const deleteResult=await selectedCollection.deleteMany(query)
+
+      res.send({insertResult,deleteResult})
+    })
     
+
+
+
+
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");

@@ -172,19 +172,37 @@ async function run() {
   })
 
 
-  // app.get('/classes/:email', verifyJWT, async(req,res)=>{
-  //   const email=req.params.email;
-  //   const query={email:email}
+  app.get('/classes/update/:id', async(req,res)=>{
+    const id=req.params.id;
+    const query={_id: new ObjectId(id)}
 
-  //   const result=await classesCollection.find(query).toArray()
-  //   res.send(result)
-  // })
+    const result=await classesCollection.findOne(query)
+    res.send(result)
+  })
 
 
   app.post('/classes',verifyJWT,async (req,res)=>{
       const newClass = req.body
       const result=await classesCollection.insertOne(newClass);
       res.send(result)
+  })
+
+
+  app.put('/classes/update/:id',async(req,res)=>{
+    const id =req.params.id
+    const updatedClass=req.body
+    // console.log(updatedClass)
+    const filter={_id:new ObjectId(id)}
+    const updateDoc={
+      $set:{
+        AvailableSeats:updatedClass?.AvailableSeats,
+        Image:updatedClass?.Image,
+        Name:updatedClass?.Name,
+        Price:updatedClass?.Price,
+      }
+    }
+    const result=await classesCollection.updateOne(filter,updateDoc)
+    res.send(result)
   })
 
 
@@ -257,6 +275,18 @@ async function run() {
     })
 
     //------------- payment related api------------
+
+
+    app.get('/payments',verifyJWT,async(req,res)=>{
+      const email=req.query.email;
+      const query={email:email}
+      const options={
+        sort:{date:-1}
+      }
+      const result=await paymentsCollection.find(query,options).toArray()
+      res.send(result)
+    })
+
     // create payment intent
     app.post('/create-payment-intent',verifyJWT, async(req,res)=>{
       const {price}=req.body;
@@ -289,7 +319,7 @@ async function run() {
 
 
 
-
+    
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");

@@ -9,7 +9,14 @@ const stripe=require('stripe')(process.env.PAYMENT_SECRET_KEY)
 const port = process.env.PORT || 5000;
 
 // middleware
-app.use(cors())
+const corsConfig = {
+  origin: '*',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT',"PATCH", 'DELETE']
+}
+app.use(cors(corsConfig))
+app.options("", cors(corsConfig))
+
 app.use(express.json())
 
 const verifyJWT=(req,res,next)=>{
@@ -273,6 +280,7 @@ async function run() {
         const result=await instructorsCollection.find().toArray()
         res.send(result)
     })
+    
 
     //------------- payment related api------------
 
